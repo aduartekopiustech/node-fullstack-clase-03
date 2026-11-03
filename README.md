@@ -4,7 +4,7 @@
 
 # Clase 3 de NodeJS
 
-### Kopius · The Academy · Cohort 05 · M2
+### Kopius · The Academy · Cohort 05 · M3
 
 **Continuación del reforzamiento de JavaScript: patrones, asincronía, estructuras de datos y closures**
 
@@ -19,12 +19,14 @@
 ## CONTENIDO
 
 1. [Adapter Pattern](#1-adapter-pattern)
+   - [Tarea 006: Adapter Pattern para dependencias externas](#tarea-006-adapter-pattern-para-dependencias-externas)
 2. [Promises](#2-promises)
 3. [Async y Await](#3-async-y-await)
 4. [Objetos](#4-objetos)
 5. [Arrays](#5-arrays)
    - [Principales métodos de arrays](#principales-métodos-de-arrays)
    - [Desestructuración y Spread en arrays](#desestructuración-y-spread-en-arrays)
+   - [Tarea 007: Reporte asíncrono de personas](#tarea-007-reporte-asíncrono-de-personas)
 6. [Referencias](#referencias)
 
 ---
@@ -36,36 +38,104 @@
 
 ## 1. Adapter Pattern
 
-El **patrón adaptador** es un patrón de diseño que permite transformar la estructura de datos o la interfaz de un componente para que sea compatible con otro.
+El **patrón adaptador** (_Adapter Pattern_) es un patrón estructural que permite conectar componentes con interfaces incompatibles. Funciona como un traductor: recibe la forma de uso ofrecida por una dependencia externa y expone la forma que nuestra aplicación necesita.
 
-Es especialmente útil cuando consumimos APIs externas y necesitamos adaptar sus respuestas a la estructura utilizada por nuestra aplicación.
+Sin un adaptador, el código de negocio conoce detalles como el nombre de una función, el formato de una respuesta o la librería que realiza el trabajo. Si esos detalles cambian, también debemos modificar nuestra lógica. El adaptador concentra ese conocimiento en un único lugar y ofrece a la aplicación una interfaz propia y estable.
 
-**Ejemplo**
+| Participante    | Responsabilidad                                                     |
+| --------------- | ------------------------------------------------------------------- |
+| **Aplicación**  | Utiliza una interfaz simple definida por el proyecto                |
+| **Adaptador**   | Traduce la llamada o los datos entre la aplicación y la dependencia |
+| **Dependencia** | Proporciona la funcionalidad externa que queremos aprovechar        |
 
-Supongamos que una API externa nos devuelve:
-
-```javascript
-const apiUser = {
-  first_name: "John",
-  last_name: "Doe",
-};
-```
-
-Pero nuestra aplicación utiliza una propiedad llamada `fullName`.
-
-Podemos crear una función adaptadora:
+Por ejemplo, si una librería exporta una función llamada `uuidv4()`, podemos ocultar ese detalle detrás de un adaptador llamado `generateId()`. El resto de la aplicación solo conoce `generateId()` y no necesita saber qué paquete genera el identificador.
 
 ```javascript
-const userAdapter = (user) => ({
-  fullName: `${user.first_name} ${user.last_name}`,
-});
-
-const user = userAdapter(apiUser);
-
-console.log(user.fullName); // John Doe
+// La aplicación utiliza nuestro contrato, no la API de la librería.
+const id = generateId();
 ```
 
-De esta manera, evitamos que nuestra aplicación dependa directamente de la estructura de datos de la API externa.
+Esta separación reduce el **acoplamiento**, facilita reemplazar dependencias y permite probar la lógica de la aplicación sin depender directamente de implementaciones externas. Un adaptador no agrega reglas de negocio: su responsabilidad es traducir y aislar.
+
+#### Tarea 006: Adapter Pattern para dependencias externas
+
+> [!IMPORTANT]
+> **Objetivo**
+>
+> Aplicar el patrón adaptador sobre las dependencias `uuid` y `get-age` utilizadas en la **Tarea 005**, evitando que la Factory Function `createPerson()` dependa directamente de sus interfaces.
+>
+> Al finalizar, la Factory Function deberá conservar su comportamiento y utilizar únicamente funciones definidas por nuestro proyecto.
+
+Partiremos del archivo `src/factories/person.factory.js` creado en la clase anterior. Actualmente, este módulo importa y utiliza directamente ambas dependencias:
+
+```javascript
+import { v4 as uuidv4 } from "uuid";
+import getAge from "get-age";
+```
+
+Aunque la implementación funciona, la Factory Function queda acoplada a los nombres y formas de uso de esas librerías. Vamos a colocar adaptadores entre nuestra lógica y las dependencias externas.
+
+**1. Crear el directorio de adaptadores**
+
+Dentro de `src`, crear un directorio llamado `adapters` con dos módulos:
+
+```text
+node-fullstack-clase-03/
+├── src/
+│   ├── adapters/
+│   │   ├── age.adapter.js
+│   │   └── id.adapter.js
+│   ├── factories/
+│   │   └── person.factory.js
+│   └── app.js
+├── package.json
+└── package-lock.json
+```
+
+**2. Definir los contratos de nuestra aplicación**
+
+Implementar y exportar las siguientes funciones:
+
+| Adaptador        | Función                   | Resultado esperado               |
+| ---------------- | ------------------------- | -------------------------------- |
+| `id.adapter.js`  | `generateId()`            | Un identificador UUID v4         |
+| `age.adapter.js` | `calculateAge(birthdate)` | La edad calculada como un número |
+
+Cada adaptador deberá importar únicamente la dependencia que necesita. Estos serán los únicos módulos del proyecto autorizados para conocer y utilizar directamente `uuid` y `get-age`.
+
+> [!NOTE]
+> `calculateAge()` deberá recibir la fecha de nacimiento en formato `YYYY-MM-DD`, igual que en la tarea anterior.
+
+**3. Refactorizar la Factory Function**
+
+Modificar `src/factories/person.factory.js` para que:
+
+1. Elimine las importaciones directas de `uuid` y `get-age`.
+2. Importe `generateId()` y `calculateAge()` desde los adaptadores.
+3. Mantenga la firma `createPerson(name, birthdate)`.
+4. Continúe retornando un objeto con las propiedades `id`, `name`, `birthdate` y `age`.
+
+**4. Verificar el comportamiento**
+
+Ejecutar la aplicación con:
+
+```bash
+npm start
+```
+
+La creación de personas deberá producir el mismo resultado que antes de la refactorización. El cambio estará en la organización interna del código, no en su comportamiento observable.
+
+**Criterios de aceptación**
+
+- `person.factory.js` no importa paquetes externos.
+- Cada dependencia externa se utiliza únicamente desde su adaptador.
+- `createPerson()` conserva su interfaz y la estructura del objeto retornado.
+- La aplicación se ejecuta correctamente mediante `npm start`.
+
+> [!TIP]
+> **Desafío**
+>
+> Imaginemos que mañana debemos reemplazar `uuid` o `get-age` por otra librería. Identificar qué archivos deberían modificarse y explicar por qué la Factory Function debería permanecer sin cambios.
 
 <sub>[⬆ Volver al índice](#contenido)</sub>
 
@@ -73,41 +143,90 @@ De esta manera, evitamos que nuestra aplicación dependa directamente de la estr
 
 ## 2. Promises
 
-Una **promesa** representa el resultado futuro de una operación que puede completarse correctamente o fallar.
+En Node.js es frecuente iniciar operaciones cuyo resultado no está disponible inmediatamente: leer un archivo, consultar una base de datos, consumir una API o esperar un temporizador. Si el programa se detuviera hasta recibir cada respuesta, no podría aprovechar el tiempo de espera para continuar con otras tareas.
+
+Una **promesa** (_Promise_) es un objeto que representa el resultado futuro de una operación asíncrona. No es el resultado en sí mismo: es el compromiso de que más adelante recibiremos un valor o un error.
 
 Una promesa puede encontrarse en tres estados:
 
-| Estado        | Significado                            |
-| ------------- | -------------------------------------- |
-| **Pending**   | La operación todavía no terminó        |
-| **Fulfilled** | La operación se completó correctamente |
-| **Rejected**  | La operación falló                     |
+| Estado        | Significado                                      |
+| ------------- | ------------------------------------------------ |
+| **Pending**   | La operación todavía está en proceso             |
+| **Fulfilled** | La operación finalizó correctamente con un valor |
+| **Rejected**  | La operación finalizó con un error                |
 
-**Ejemplo**
+Una promesa comienza como `pending` y solo puede cambiar una vez a `fulfilled` o `rejected`. Una vez resuelta o rechazada, su estado ya no puede volver a cambiar.
+
+### Crear una promesa
+
+El constructor `Promise` recibe una función con dos callbacks:
+
+- `resolve(value)`: completa la operación correctamente.
+- `reject(error)`: informa que la operación falló.
 
 ```javascript
-const getUser = () => {
-  return new Promise((resolve) => {
+const getUserById = (id) => {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
-      resolve({ id: 1, name: "John" });
-    }, 1000);
+      if (!id) {
+        reject(new Error("User ID is required"));
+        return;
+      }
+
+      resolve({ id, name: "John Doe" });
+    }, 500);
   });
 };
+```
 
-getUser()
+`setTimeout()` simula una operación que necesita tiempo. En una aplicación real, la promesa podría representar una consulta a una API o una base de datos.
+
+### Consumir una promesa
+
+Utilizamos tres métodos para reaccionar cuando la operación finaliza:
+
+| Método       | Cuándo se ejecuta                             |
+| ------------ | --------------------------------------------- |
+| `.then()`    | Cuando la promesa se resuelve correctamente   |
+| `.catch()`   | Cuando la promesa es rechazada                |
+| `.finally()` | Siempre, independientemente del resultado     |
+
+```javascript
+getUserById(1)
+  .then((user) => {
+    console.log(user);
+  })
+  .catch((error) => {
+    console.error(error.message);
+  })
+  .finally(() => {
+    console.log("Operation completed");
+  });
+```
+
+Los métodos `.then()` pueden encadenarse. Cada uno devuelve una nueva promesa y recibe el valor retornado por el paso anterior.
+
+```javascript
+getUserById(1)
+  .then((user) => ({ ...user, isActive: true }))
   .then((user) => console.log(user))
-  .catch((error) => console.error(error));
+  .catch((error) => console.error(error.message));
 ```
 
-Después de aproximadamente un segundo, obtenemos:
+> [!IMPORTANT]
+> Si una función inicia una promesa, debe retornarla. De lo contrario, quien invoque la función no podrá esperar su resultado ni manejar correctamente sus errores.
 
-```text
-{ id: 1, name: 'John' }
+### Ejecutar varias promesas
+
+Cuando varias operaciones son independientes, podemos iniciar sus promesas y utilizar `Promise.all()` para esperar todos los resultados como un conjunto.
+
+```javascript
+const getUsers = () => {
+  return Promise.all([getUserById(1), getUserById(2)]);
+};
 ```
 
-Utilizamos `.then()` para procesar el resultado y `.catch()` para manejar posibles errores.
-
-Las promesas son fundamentales para trabajar con operaciones asíncronas, como peticiones HTTP o consultas a bases de datos.
+Si alguna de las promesas es rechazada, `Promise.all()` también se rechaza. Este comportamiento evita continuar como si el conjunto completo hubiera finalizado correctamente.
 
 <sub>[⬆ Volver al índice](#contenido)</sub>
 
@@ -115,38 +234,64 @@ Las promesas son fundamentales para trabajar con operaciones asíncronas, como p
 
 ## 3. Async y Await
 
-`async` y `await` permiten trabajar con promesas utilizando una sintaxis más sencilla y legible.
+`async` y `await` permiten consumir promesas con una sintaxis similar al código secuencial. No reemplazan a las promesas: trabajan sobre ellas y facilitan su lectura.
 
-- **async:** declara una función asíncrona que siempre devuelve una promesa.
-- **await:** espera el resultado de una promesa antes de continuar con la ejecución de esa función.
+| Palabra   | Responsabilidad                                                                  |
+| --------- | -------------------------------------------------------------------------------- |
+| `async`   | Declara una función asíncrona que siempre devuelve una promesa                   |
+| `await`   | Suspende esa función hasta que una promesa se resuelve o es rechazada            |
 
-**Ejemplo**
+Aunque una función `async` retorne un valor común, JavaScript lo envuelve automáticamente en una promesa.
 
-Utilizando la función `getUser()` del ejemplo anterior:
+```javascript
+const getMessage = async () => {
+  return "Hello";
+};
+
+getMessage().then((message) => console.log(message));
+```
+
+### Esperar el resultado
+
+Utilizando `getUserById()` de la sección anterior:
 
 ```javascript
 const showUser = async () => {
   try {
-    const user = await getUser();
+    const user = await getUserById(1);
 
     console.log(user.name);
   } catch (error) {
-    console.error(error);
+    console.error(error.message);
+  } finally {
+    console.log("Operation completed");
   }
 };
 
 showUser();
 ```
 
-**Resultado esperado:**
+Cuando la promesa se resuelve, `await` entrega su valor. Si es rechazada, produce un error que puede manejarse con `try/catch`.
 
-```text
-John
+> [!NOTE]
+> `await` suspende únicamente la función `async` que lo contiene. No bloquea todo Node.js: el entorno puede continuar procesando otras operaciones mientras espera.
+
+### Operaciones secuenciales y concurrentes
+
+Si una operación necesita el resultado de la anterior, debemos esperarlas en orden. Si son independientes, podemos iniciarlas juntas y esperar sus resultados concurrentemente con `Promise.all()`.
+
+```javascript
+const loadUsers = async () => {
+  const [firstUser, secondUser] = await Promise.all([
+    getUserById(1),
+    getUserById(2),
+  ]);
+
+  return [firstUser, secondUser];
+};
 ```
 
-Aunque utilizamos `await`, JavaScript no bloquea todo el programa mientras espera la respuesta. La función asíncrona suspende su ejecución y permite que otras tareas continúen.
-
-El bloque `try/catch` permite manejar errores de una forma similar a la utilizada en código síncrono.
+La idea central es simple: **secuencial cuando existe dependencia; concurrente cuando las operaciones son independientes**. Iniciar todo junto sin analizar las dependencias puede producir errores, pero esperar innecesariamente cada operación puede volver más lenta la aplicación.
 
 <sub>[⬆ Volver al índice](#contenido)</sub>
 
@@ -154,121 +299,120 @@ El bloque `try/catch` permite manejar errores de una forma similar a la utilizad
 
 ## 4. Objetos
 
-Un **objeto** es una estructura de datos que permite almacenar información mediante pares de **clave y valor (key-value)**.
+Un **objeto** agrupa información relacionada mediante pares de **clave y valor**. En lugar de manejar variables aisladas para el nombre, la edad y el estado de una persona, podemos representar todo como una única entidad.
 
-Los objetos son fundamentales en JavaScript porque nos permiten representar entidades, como usuarios, productos, criptomonedas o cualquier elemento de nuestra aplicación.
+En Node.js utilizamos objetos para modelar entidades, configurar funciones, intercambiar datos entre módulos y representar respuestas de APIs.
 
-**Crear un objeto**
+> [!TIP]
+> Para la Tarea 007, concentrarse especialmente en crear objetos, desestructurar propiedades y utilizar spread. Las referencias y `this` amplían el concepto, pero no son necesarias para resolver el ejercicio principal.
+
+### Crear y acceder a un objeto
 
 ```javascript
 const user = {
   id: 1,
-  name: "John",
+  name: "John Doe",
   age: 25,
   isActive: true,
 };
-```
 
-Cada propiedad está formada por una clave (`name`) y un valor (`'John'`).
-
-**Acceder a las propiedades**
-
-Podemos acceder a las propiedades utilizando la notación de punto (`.`) o corchetes (`[]`).
-
-```javascript
-console.log(user.name); // John
+console.log(user.name); // John Doe
 console.log(user["age"]); // 25
 ```
 
-**Agregar y modificar propiedades**
+La notación de punto es la más habitual. Los corchetes son útiles cuando el nombre de la propiedad está almacenado en una variable.
 
 ```javascript
-user.email = "john@example.com";
-user.age = 26;
+const property = "isActive";
 
-console.log(user);
+console.log(user[property]); // true
 ```
 
-> [!NOTE]
-> Aunque declaramos el objeto con `const`, podemos modificar sus propiedades. Lo que no podemos hacer es reasignar la variable `user` a otro objeto.
+### Modificar propiedades y referencias
 
-**Métodos de un objeto**
-
-Un objeto también puede contener funciones, conocidas como métodos.
+Aunque un objeto se declare con `const`, sus propiedades pueden modificarse. `const` impide reasignar la variable, pero no vuelve inmutable al objeto.
 
 ```javascript
-const user = {
-  name: "John",
+user.age = 26;
+user.email = "john@example.com";
+```
+
+Los objetos se manejan mediante referencias. Si dos variables apuntan al mismo objeto, una modificación realizada desde cualquiera de ellas será visible desde la otra.
+
+```javascript
+const userReference = user;
+
+userReference.name = "Anna Smith";
+
+console.log(user.name); // Anna Smith
+```
+
+Este comportamiento es importante porque una modificación accidental puede afectar otras partes de la aplicación.
+
+### Métodos
+
+Una propiedad que contiene una función se denomina **método**. Los métodos representan comportamientos relacionados con el objeto.
+
+```javascript
+const userWithGreeting = {
+  name: "John Doe",
   greet() {
     return `Hello, ${this.name}`;
   },
 };
 
-console.log(user.greet()); // Hello, John
+console.log(userWithGreeting.greet()); // Hello, John Doe
 ```
 
-**Desestructuración de objetos (Object Destructuring)**
+Dentro de un método tradicional, `this` permite acceder al objeto que ejecutó el método.
 
-La desestructuración permite extraer propiedades de un objeto y asignarlas a variables de manera más sencilla.
+> [!WARNING]
+> Las arrow functions no crean su propio `this`. Por ese motivo, no siempre son adecuadas como métodos cuando necesitamos acceder al objeto mediante `this`.
 
-**Ejemplo**
+### Desestructuración de objetos
+
+La desestructuración permite extraer propiedades y asignarlas a variables. También podemos renombrarlas y definir valores predeterminados.
 
 ```javascript
-const crypto = {
-  id: "bitcoin",
-  symbol: "btc",
-  price: 80800,
+const product = {
+  id: 1,
+  name: "Keyboard",
+  price: 80,
 };
 
-const { symbol, price } = crypto;
+const { name, price, stock = 0 } = product;
+const { price: currentPrice } = product;
 
-console.log(symbol); // btc
-console.log(price); // 80800
+console.log(name); // Keyboard
+console.log(price); // 80
+console.log(stock); // 0
+console.log(currentPrice); // 80
 ```
 
-También podemos renombrar las variables:
+### Spread e inmutabilidad
+
+El operador spread (`...`) permite crear un nuevo objeto copiando las propiedades de otro. Las propiedades declaradas después sobrescriben las anteriores.
 
 ```javascript
-const { price: currentPrice } = crypto;
-
-console.log(currentPrice); // 80800
-```
-
-**Spread Operator en objetos (...)**
-
-El operador spread (`...`) permite copiar propiedades de un objeto o combinar varios objetos.
-
-**Ejemplo**
-
-```javascript
-const user = {
-  name: "John",
+const baseUser = {
+  name: "John Doe",
   age: 25,
 };
 
 const updatedUser = {
-  ...user,
+  ...baseUser,
   age: 26,
   isActive: true,
 };
 
-console.log(updatedUser);
+console.log(baseUser.age); // 25
+console.log(updatedUser.age); // 26
 ```
 
-**Resultado esperado:**
-
-```javascript
-{
-  name: 'John',
-  age: 26,
-  isActive: true
-}
-```
-
-Este mecanismo resulta especialmente útil para trabajar con **inmutabilidad**, evitando modificar directamente el objeto original.
+Este enfoque favorece la **inmutabilidad**: en lugar de modificar el objeto original, creamos una nueva versión. Es una práctica útil para reducir efectos secundarios y entender con mayor facilidad cómo cambian los datos.
 
 > [!WARNING]
-> Spread realiza una copia superficial (_shallow copy_). Los objetos anidados siguen compartiendo sus referencias.
+> Spread realiza una copia superficial (_shallow copy_). Si el objeto contiene otros objetos o arrays, esas estructuras anidadas continúan compartiendo sus referencias.
 
 <sub>[⬆ Volver al índice](#contenido)</sub>
 
@@ -276,129 +420,112 @@ Este mecanismo resulta especialmente útil para trabajar con **inmutabilidad**, 
 
 ## 5. Arrays
 
-Un **array** es una estructura de datos que permite almacenar múltiples valores dentro de una misma variable.
+Un **array** es una colección ordenada de valores. Cada elemento ocupa una posición identificada por un índice numérico que comienza en `0`.
 
-A diferencia de los objetos, sus elementos se organizan mediante índices numéricos que comienzan en `0`.
+Los arrays permiten trabajar con grupos de datos: personas, productos, mensajes o resultados obtenidos desde una base de datos.
 
-**Crear un array**
+> [!TIP]
+> Para la Tarea 007, el foco estará en arrays de objetos y en utilizar `map()`, `filter()` y `reduce()` sin modificar la colección original.
+
+### Crear y recorrer un array
 
 ```javascript
 const cryptocurrencies = ["Bitcoin", "Ethereum", "Stellar"];
-```
 
-**Acceder a sus elementos**
-
-```javascript
 console.log(cryptocurrencies[0]); // Bitcoin
-console.log(cryptocurrencies[1]); // Ethereum
 console.log(cryptocurrencies.length); // 3
 ```
 
-**Agregar y eliminar elementos**
+Podemos recorrerlo con `for...of` cuando solo necesitamos leer cada elemento.
 
 ```javascript
-const cryptocurrencies = ["Bitcoin", "Ethereum"];
-
-// Agregar al final
-cryptocurrencies.push("Stellar");
-
-// Eliminar el último
-cryptocurrencies.pop();
-
-console.log(cryptocurrencies);
+for (const cryptocurrency of cryptocurrencies) {
+  console.log(cryptocurrency);
+}
 ```
 
-> [!NOTE]
-> Los métodos `push()` y `pop()` modifican el array original.
+### Operaciones que modifican y operaciones que crean
 
-**Arrays de objetos**
+No todas las operaciones trabajan de la misma forma. Algunos métodos modifican el array original, mientras que otros métodos y sintaxis crean uno nuevo.
 
-En aplicaciones reales es frecuente trabajar con arrays que contienen objetos.
-
-Por ejemplo, una API puede devolver una colección de criptomonedas:
+| Modifican el original | Devuelven un nuevo array |
+| --------------------- | ------------------------ |
+| `push()`              | `map()`                  |
+| `pop()`               | `filter()`               |
+| `shift()`             | `slice()`                |
+| `unshift()`           | `concat()`               |
+| `splice()`            | Spread (`...`)           |
 
 ```javascript
-const cryptocurrencies = [
-  { id: 1, name: "Bitcoin", price: 80800 },
-  { id: 2, name: "Ethereum", price: 3500 },
-  { id: 3, name: "Stellar", price: 0.35 },
+const participantNames = ["John", "Anna"];
+
+participantNames.push("Robert");
+
+const updatedNames = [...participantNames, "Maria"];
+```
+
+Conocer esta diferencia evita modificaciones inesperadas y ayuda a elegir conscientemente entre mutación e inmutabilidad.
+
+### Arrays de objetos
+
+En aplicaciones reales es común recibir colecciones de objetos. Cada elemento representa una entidad con sus propias propiedades.
+
+```javascript
+const products = [
+  { id: 1, name: "Keyboard", price: 80 },
+  { id: 2, name: "Mouse", price: 40 },
+  { id: 3, name: "Monitor", price: 300 },
 ];
-```
 
-Podemos acceder a una propiedad de un objeto dentro del array:
-
-```javascript
-console.log(cryptocurrencies[0].name); // Bitcoin
-console.log(cryptocurrencies[1].price); // 3500
+console.log(products[0].name); // Keyboard
 ```
 
 ### Principales métodos de arrays
 
-JavaScript proporciona métodos que permiten recorrer, transformar y buscar elementos dentro de un array.
+Los métodos de arrays reciben callbacks y permiten expresar con claridad qué operación queremos realizar.
 
 **`forEach()` — Recorrer elementos**
 
-Ejecuta una función por cada elemento del array.
+Ejecuta una función por cada elemento y retorna `undefined`. Se utiliza principalmente para producir un efecto secundario, como mostrar información.
 
 ```javascript
-const cryptocurrencies = ["Bitcoin", "Ethereum", "Stellar"];
-
-cryptocurrencies.forEach((crypto) => {
-  console.log(crypto);
+products.forEach((product) => {
+  console.log(product.name);
 });
-```
-
-**Resultado:**
-
-```text
-Bitcoin
-Ethereum
-Stellar
 ```
 
 **`map()` — Transformar elementos**
 
-Crea un nuevo array aplicando una transformación a cada elemento.
+Crea un nuevo array con la misma cantidad de elementos, transformando cada uno.
 
 ```javascript
-const prices = [100, 200, 300];
+const productNames = products.map((product) => product.name);
 
-const updatedPrices = prices.map((price) => price * 2);
-
-console.log(updatedPrices); // [200, 400, 600]
+console.log(productNames); // ['Keyboard', 'Mouse', 'Monitor']
 ```
 
-El array original permanece sin modificaciones.
+> [!TIP]
+> Utilizar `map()` cuando necesitamos el array resultante y `forEach()` cuando solo necesitamos ejecutar una acción por cada elemento.
 
 **`filter()` — Filtrar elementos**
 
-Crea un nuevo array que contiene únicamente los elementos que cumplen una condición.
+Crea un nuevo array con todos los elementos que cumplen una condición.
 
 ```javascript
-const prices = [100, 200, 300, 400];
+const expensiveProducts = products.filter((product) => product.price > 100);
 
-const filteredPrices = prices.filter((price) => price > 200);
-
-console.log(filteredPrices); // [300, 400]
+console.log(expensiveProducts);
 ```
 
 **`find()` — Buscar un elemento**
 
-Devuelve el primer elemento que cumple una condición.
+Devuelve el primer elemento que cumple una condición. Si no encuentra ninguno, devuelve `undefined`.
 
 ```javascript
-const cryptocurrencies = [
-  { id: 1, name: "Bitcoin" },
-  { id: 2, name: "Ethereum" },
-  { id: 3, name: "Stellar" },
-];
+const foundProduct = products.find((item) => item.id === 2);
 
-const crypto = cryptocurrencies.find((item) => item.id === 2);
-
-console.log(crypto); // { id: 2, name: 'Ethereum' }
+console.log(foundProduct); // { id: 2, name: 'Mouse', price: 40 }
 ```
-
-Si no encuentra un elemento, devuelve `undefined`.
 
 **`some()` y `every()` — Verificar condiciones**
 
@@ -407,66 +534,172 @@ Si no encuentra un elemento, devuelve `undefined`.
 `every()` comprueba si todos los elementos cumplen una condición.
 
 ```javascript
-const prices = [100, 200, 300];
+const hasExpensiveProduct = products.some((product) => product.price > 250);
+const allHavePositivePrice = products.every((product) => product.price > 0);
 
-const hasExpensive = prices.some((price) => price > 250);
-const allPositive = prices.every((price) => price > 0);
-
-console.log(hasExpensive); // true
-console.log(allPositive); // true
+console.log(hasExpensiveProduct); // true
+console.log(allHavePositivePrice); // true
 ```
 
 **`reduce()` — Acumular valores**
 
-Permite recorrer un array y generar un único resultado acumulado.
+Recorre el array y produce un único resultado acumulado. El segundo argumento representa el valor inicial del acumulador.
 
 ```javascript
-const prices = [100, 200, 300];
+const total = products.reduce((sum, product) => sum + product.price, 0);
 
-const total = prices.reduce((accumulator, price) => accumulator + price, 0);
+console.log(total); // 420
+```
 
-console.log(total); // 600
+Definir el valor inicial evita errores con arrays vacíos y hace explícito el tipo de resultado que queremos construir.
+
+### Combinar métodos
+
+Los métodos pueden encadenarse para formar una secuencia de transformaciones. Cada paso debe tener una responsabilidad clara.
+
+```javascript
+const affordableProductNames = products
+  .filter((product) => product.price <= 100)
+  .map((product) => product.name);
+
+console.log(affordableProductNames); // ['Keyboard', 'Mouse']
 ```
 
 ### Desestructuración y Spread en arrays
 
-**Array Destructuring**
-
-Permite extraer elementos de un array y asignarlos a variables.
+La desestructuración permite extraer elementos según su posición. Spread permite crear o combinar arrays sin modificar los originales.
 
 ```javascript
-const cryptocurrencies = ["Bitcoin", "Ethereum", "Stellar"];
+const orderedNames = ["John", "Anna", "Robert"];
 
-const [first, second] = cryptocurrencies;
+const [first, second] = orderedNames;
 
-console.log(first); // Bitcoin
-console.log(second); // Ethereum
+const extendedNames = [...orderedNames, "Maria"];
+
+console.log(first); // John
+console.log(second); // Anna
+console.log(extendedNames); // ['John', 'Anna', 'Robert', 'Maria']
 ```
 
-También podemos intercambiar valores:
+#### Tarea 007: Reporte asíncrono de personas
+
+> [!IMPORTANT]
+> **Objetivo**
+>
+> Construir un reporte de personas que integre **Promises**, **Async/Await**, **Objetos** y **Arrays**, reutilizando la Factory Function y los adaptadores implementados en la Tarea 006.
+>
+> Al finalizar, la aplicación deberá obtener datos de manera asíncrona, transformarlos sin modificar el array original y presentar un resumen calculado.
+
+**Escenario**
+
+Nuestra aplicación recibe datos básicos de personas desde una fuente externa simulada. Cada registro contiene únicamente `name` y `birthdate`. Debemos convertir esos datos en objetos persona, identificar a las personas adultas y construir un reporte.
+
+**1. Crear la fuente de datos**
+
+Crear `src/data/people.data.js` y exportar un array con al menos cuatro objetos:
 
 ```javascript
-let percentageA = 30;
-let percentageB = 70;
+const peopleData = [
+  { name: "John Doe", birthdate: "2000-05-15" },
+  { name: "Anna Smith", birthdate: "2010-10-20" },
+  { name: "Robert Johnson", birthdate: "1988-02-10" },
+  { name: "Maria Garcia", birthdate: "2008-12-01" },
+];
 
-[percentageA, percentageB] = [percentageB, percentageA];
-
-console.log(percentageA); // 70
-console.log(percentageB); // 30
+export default peopleData;
 ```
 
-**Spread Operator**
+**2. Simular una operación asíncrona**
 
-Podemos crear un nuevo array sin modificar el original.
+Crear `src/services/person.service.js`. En la parte superior, importar la fuente de datos y la Factory Function:
 
 ```javascript
-const cryptocurrencies = ["Bitcoin", "Ethereum"];
-
-const updatedCryptos = [...cryptocurrencies, "Stellar"];
-
-console.log(updatedCryptos);
-// ['Bitcoin', 'Ethereum', 'Stellar']
+import peopleData from "../data/people.data.js";
+import createPerson from "../factories/person.factory.js";
 ```
+
+Luego, implementar `getPeopleData()`.
+
+La función deberá:
+
+1. Retornar una nueva promesa.
+2. Utilizar `setTimeout()` para simular una espera de un segundo.
+3. Resolver la promesa con el array cuando existan registros.
+4. Rechazarla con un objeto `Error` cuando el array esté vacío.
+5. Exportar la función para que pueda verificarse desde otros módulos.
+
+**3. Construir el reporte**
+
+En el mismo servicio, implementar y exportar una función `async` llamada `buildPeopleReport()` que:
+
+1. Obtenga los datos utilizando `await getPeopleData()`.
+2. Utilice desestructuración para extraer `name` y `birthdate` de cada registro.
+3. Utilice `map()` y `createPerson()` para crear las personas completas.
+4. Utilice spread para agregar `isAdult`, cuyo valor será `true` cuando `age >= 18`.
+5. Utilice `filter()` para obtener únicamente las personas adultas.
+6. Utilice `reduce()` para calcular la edad promedio de todas las personas.
+7. Genere la fecha del reporte mediante `new Date().toISOString()`.
+8. Retorne un objeto con la siguiente estructura:
+
+```javascript
+{
+  generatedAt: "2026-11-02T20:30:00.000Z",
+  total: 4,
+  adults: [/* adult person objects */],
+  averageAge: 24.25
+}
+```
+
+> [!NOTE]
+> `generatedAt` deberá obtenerse dinámicamente. Los identificadores, las edades y el promedio del ejemplo son ilustrativos y pueden variar según la fecha de ejecución.
+
+**4. Ejecutar y manejar errores**
+
+Desde `src/app.js`, importar el servicio:
+
+```javascript
+import { buildPeopleReport } from "./services/person.service.js";
+```
+
+Luego, crear una función `main()` declarada con `async` que:
+
+1. Utilice `try/catch/finally`.
+2. Espere el resultado de `buildPeopleReport()`.
+3. Muestre el reporte completo con `console.log()`.
+4. Muestre el mensaje del error cuando la operación falle.
+5. Informe desde `finally` que el proceso terminó.
+6. Ejecute la función invocando `main()` al final del archivo.
+
+**Estructura esperada**
+
+```text
+node-fullstack-clase-03/
+├── src/
+│   ├── adapters/
+│   ├── data/
+│   │   └── people.data.js
+│   ├── factories/
+│   │   └── person.factory.js
+│   ├── services/
+│   │   └── person.service.js
+│   └── app.js
+├── package.json
+└── package-lock.json
+```
+
+**Criterios de aceptación**
+
+- La obtención de datos retorna una promesa y contempla `resolve` y `reject`.
+- El reporte se construye mediante `async/await` y maneja errores con `try/catch`.
+- Los registros y el reporte se representan mediante objetos.
+- Se utilizan `map()`, `filter()` y `reduce()` con responsabilidades diferentes.
+- El array original no se modifica.
+- La aplicación se ejecuta correctamente mediante `npm start`.
+
+> [!TIP]
+> **Desafío**
+>
+> Vaciar temporalmente `peopleData` para comprobar el camino de error. Verificar que se muestre el mensaje correspondiente y que el bloque `finally` se ejecute tanto en caso de éxito como de error.
 
 <sub>[⬆ Volver al índice](#contenido)</sub>
 

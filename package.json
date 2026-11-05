@@ -1,0 +1,22 @@
+{
+  "name": "node-fullstack-clase-03",
+  "version": "1.0.0",
+  "description": "Adapter Pattern exercise with Node.js",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node .",
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github-kopius:aduartekopiustech/node-fullstack-clase-03.git"
+  },
+  "keywords": [],
+  "author": "Ariel Duarte",
+  "license": "ISC",
+  "dependencies": {
+    "get-age": "^1.0.1",
+    "uuid": "^14.0.3"
+  }
+}

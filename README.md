@@ -6,7 +6,7 @@
 
 ### Kopius · The Academy · Cohort 05 · M3
 
-**Continuación del reforzamiento de JavaScript: patrones, asincronía, estructuras de datos y closures**
+**Continuación del reforzamiento de JavaScript: patrones, asincronía y estructuras de datos**
 
 ![Node.js](https://img.shields.io/badge/Node.js-24.x-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
@@ -153,7 +153,7 @@ Una promesa puede encontrarse en tres estados:
 | ------------- | ------------------------------------------------ |
 | **Pending**   | La operación todavía está en proceso             |
 | **Fulfilled** | La operación finalizó correctamente con un valor |
-| **Rejected**  | La operación finalizó con un error                |
+| **Rejected**  | La operación finalizó con un error               |
 
 Una promesa comienza como `pending` y solo puede cambiar una vez a `fulfilled` o `rejected`. Una vez resuelta o rechazada, su estado ya no puede volver a cambiar.
 
@@ -185,11 +185,11 @@ const getUserById = (id) => {
 
 Utilizamos tres métodos para reaccionar cuando la operación finaliza:
 
-| Método       | Cuándo se ejecuta                             |
-| ------------ | --------------------------------------------- |
-| `.then()`    | Cuando la promesa se resuelve correctamente   |
-| `.catch()`   | Cuando la promesa es rechazada                |
-| `.finally()` | Siempre, independientemente del resultado     |
+| Método       | Cuándo se ejecuta                           |
+| ------------ | ------------------------------------------- |
+| `.then()`    | Cuando la promesa se resuelve correctamente |
+| `.catch()`   | Cuando la promesa es rechazada              |
+| `.finally()` | Siempre, independientemente del resultado   |
 
 ```javascript
 getUserById(1)
@@ -236,10 +236,10 @@ Si alguna de las promesas es rechazada, `Promise.all()` también se rechaza. Est
 
 `async` y `await` permiten consumir promesas con una sintaxis similar al código secuencial. No reemplazan a las promesas: trabajan sobre ellas y facilitan su lectura.
 
-| Palabra   | Responsabilidad                                                                  |
-| --------- | -------------------------------------------------------------------------------- |
-| `async`   | Declara una función asíncrona que siempre devuelve una promesa                   |
-| `await`   | Suspende esa función hasta que una promesa se resuelve o es rechazada            |
+| Palabra | Responsabilidad                                                       |
+| ------- | --------------------------------------------------------------------- |
+| `async` | Declara una función asíncrona que siempre devuelve una promesa        |
+| `await` | Suspende esa función hasta que una promesa se resuelve o es rechazada |
 
 Aunque una función `async` retorne un valor común, JavaScript lo envuelve automáticamente en una promesa.
 
